@@ -1,78 +1,103 @@
 # Premiumin Plus Dashboard
 
-Premiumin Plus Dashboard is a dark-themed React app for login, member dashboard, and admin panel UI.  
-All data is mock data for now, so it is ready to be connected to a Node.js backend later.
+Frontend React untuk dashboard Premiumin Plus dengan tema gelap, aksen pink, dan layout responsif desktop.
+Seluruh data masih mock supaya siap disambungkan ke backend Node.js nanti.
 
 ## Tech Stack
 
 - React 19
 - TypeScript
 - Vite
-- React Router v7
-- Tailwind CSS 4
+- React Router
+- Tailwind CSS
 - Motion
 - Lucide React
 
-## Run Locally
+## Jalankan Lokal
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open:
+Buka:
 
 ```bash
 http://localhost:3000
 ```
 
-## Available Routes
+## Route
 
 - `/login`
 - `/dashboard`
 - `/admin`
 
-Protected routes redirect to `/login` when the session is missing.
+Route terlindungi akan redirect ke `/login` jika session belum ada.
 
-## Login Flow
+## Login
 
-- Input: username, password, remember me
-- User login redirects to `/dashboard`
-- Reseller login uses the same form with a different role
-- Admin login uses:
-  - username: `admin`
-  - password: `admin230521`
-  - redirect: `/admin`
+- Input username
+- Input password
+- Checkbox ingat saya
+- Login user / reseller
+- Login admin mock
 
-## Dashboard Menu
+## Dashboard
 
-- Komunitas WA
-- Order Akun
-- Deposit Saldo
-- Daftar Harga
-- Tarik Saldo
-- Riwayat Pesanan
-- Riwayat Deposit
-- Mutasi Saldo
-- Profil
-- Laporan Kendala
-- Bot WA & Telegram
-- Document
+- Sidebar navigasi
+- Navbar / topbar
+- Kartu saldo dan statistik
+- API Key card
+- Chart mock
+- Notifikasi transaksi mock
+- Menu komunitas, order, deposit, harga, riwayat, profil, bantuan, bot, dan dokumentasi
 
-## Main UI Notes
+## Halaman Utama
 
-- Dark background with pink accent
-- Responsive desktop-first layout
-- Modular components:
-  - Sidebar
-  - Topbar
-  - API Key Card
-  - Stat Card
-  - Mini Chart
-- Mock notifications and mock transactions
-- WhatsApp CTA buttons for contact and community links
+- `Order Akun`
+  - Checkout produk
+  - Input tujuan WhatsApp
+  - Qty
+  - Total tagihan
+  - Tombol WhatsApp bantuan
 
-## Project Structure
+- `Deposit Saldo`
+  - Nominal deposit
+  - Pilihan cepat nominal
+  - Langkah pembayaran QRIS
+  - Tombol WhatsApp bantuan
+
+- `Daftar Harga`
+  - Daftar produk dan harga saja
+  - Tanpa tombol beli
+
+- `Riwayat`
+  - Riwayat pesanan
+  - Riwayat deposit
+  - Mutasi saldo
+
+- `Profil`
+  - Data akun mock
+  - API credentials mock
+
+- `Laporan Kendala`
+  - Form tiket dan riwayat tiket
+
+- `Bot WA & Telegram`
+  - Link bot WhatsApp dan Telegram
+
+- `Document`
+  - Ringkasan dokumentasi API mock
+
+## Fitur UI
+
+- Dark theme dengan aksen pink
+- Card modern, rounded, dan compact
+- Responsive desktop
+- Animasi ringan
+- Komponen modular dan reusable
+
+## Struktur
 
 ```text
 src/
@@ -85,15 +110,7 @@ src/
   utils/
 ```
 
-## Mock Data
+## Catatan
 
-All dashboard cards, tables, charts, and API blocks use mock data for preview.  
-This keeps the UI ready for future backend integration without changing layout logic.
+Semua data saat ini masih mock dan siap diganti API backend tanpa mengubah alur utama UI.
 
-## GitHub
-
-Repository:
-
-```bash
-https://github.com/digitalpanel2024-ai/premiuminplus.git
-```
