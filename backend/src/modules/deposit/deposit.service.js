@@ -142,9 +142,16 @@ export async function refreshDepositStatus(invoice) {
     return deposit;
   }
 
+  const externalInvoice =
+    deposit.external_response?.invoice ||
+    deposit.external_response?.data?.invoice ||
+    deposit.external_response?.ref_id ||
+    deposit.external_response?.data?.ref_id ||
+    invoice;
+
   let statusResponse;
   try {
-    statusResponse = await premkuPayStatus(invoice);
+    statusResponse = await premkuPayStatus(externalInvoice);
   } catch (error) {
     const updated = await updateDeposit(invoice, {
       external_status_response: { message: error instanceof Error ? error.message : 'Premku pay status failed' },

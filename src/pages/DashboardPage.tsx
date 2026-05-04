@@ -22,6 +22,7 @@ import {
   Send,
   Users,
   Wallet,
+  X,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { AppShell, type NavSection } from '../components/layout/AppShell';
@@ -261,6 +262,7 @@ function DepositTopup() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [depositResult, setDepositResult] = useState<DepositRecord | null>(null);
+  const [checkingStatus, setCheckingStatus] = useState(false);
   const apiKey = getApiKey();
 
   const submitDeposit = async () => {
@@ -277,6 +279,32 @@ function DepositTopup() {
       setLoading(false);
     }
   };
+
+  const checkDepositStatus = async () => {
+    if (!depositResult?.invoice) return;
+
+    setCheckingStatus(true);
+    setError('');
+    try {
+      const response = await premiuminApi.depositStatus(depositResult.invoice, apiKey || undefined);
+      setDepositResult(response.data);
+      if (response.data.status === 'success') {
+        window.dispatchEvent(new Event('premiuminplus:balance-updated'));
+      }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Gagal cek status deposit.');
+    } finally {
+      setCheckingStatus(false);
+    }
+  };
+
+  const closePaymentModal = () => {
+    setDepositResult(null);
+  };
+
+  const qrValue = depositResult?.qr_data || '';
+  const qrIsImage = qrValue.startsWith('data:image') || /^https?:\/\//i.test(qrValue);
+  const uniqueCode = depositResult ? Math.max(0, Number(depositResult.total_bayar || 0) - Number(depositResult.amount || 0)) : 0;
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="space-y-4 xl:max-h-[calc(100vh-112px)] xl:overflow-hidden">
@@ -342,13 +370,6 @@ function DepositTopup() {
           </div>
 
           {error ? <div className="mt-4 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</div> : null}
-          {depositResult ? (
-            <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-              Invoice {depositResult.invoice} dibuat. Saldo baru masuk setelah status pembayaran success.
-              {depositResult.qr_data ? <p className="mt-2 break-all text-xs text-white/65">QR: {depositResult.qr_data}</p> : null}
-            </div>
-          ) : null}
-
           <button
             type="button"
             onClick={submitDeposit}
@@ -410,6 +431,69 @@ function DepositTopup() {
           </a>
         </div>
       </section>
+
+      {depositResult ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/75 px-4 py-6 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, y: 16, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-[1.45rem] border border-brand/25 bg-[#0b0f1a] p-5 shadow-[0_0_48px_rgba(255,0,127,0.18)]"
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-white/10 pb-4">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-brand-light">QRIS Payment</p>
+                <h3 className="mt-2 text-2xl font-black text-white">Pembayaran berhasil dibuat</h3>
+                <p className="mt-1 text-sm text-white/55">Scan QR dan bayar sesuai total sampai kode unik.</p>
+              </div>
+              <button type="button" onClick={closePaymentModal} className="rounded-xl border border-white/10 bg-white/5 p-2 text-white/65 hover:bg-white/10" aria-label="Tutup pembayaran">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-4 md:grid-cols-[0.9fr_1.1fr]">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="grid aspect-square w-full place-items-center overflow-hidden rounded-xl border border-white/10 bg-white p-3">
+                  {qrIsImage ? (
+                    <img src={qrValue} alt={`QR pembayaran ${depositResult.invoice}`} className="h-full w-full object-contain" />
+                  ) : (
+                    <div className="max-h-full overflow-auto break-all text-center text-[10px] leading-5 text-slate-900">{qrValue || 'QR belum tersedia'}</div>
+                  )}
+                </div>
+                <p className="mt-3 text-center text-xs font-semibold text-white/50">Barcode/QR ini mengikuti total bayar final.</p>
+              </div>
+
+              <div className="space-y-3">
+                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/35">Invoice</p>
+                  <p className="mt-1 break-all text-sm font-bold text-white">{depositResult.invoice}</p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-1">
+                  <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/35">Nominal Deposit</p>
+                    <p className="mt-1 text-xl font-black text-white">{formatCurrency(depositResult.amount)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-brand/30 bg-brand/10 px-4 py-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand-light">Total Bayar</p>
+                    <p className="mt-1 text-2xl font-black text-white">{formatCurrency(depositResult.total_bayar || depositResult.amount)}</p>
+                    <p className="mt-1 text-xs text-white/50">Kode unik: {formatCurrency(uniqueCode)}</p>
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-100">
+                  Bayar persis sesuai total. Saldo masuk sesuai nominal deposit setelah status payment sukses.
+                </div>
+                <button
+                  type="button"
+                  onClick={checkDepositStatus}
+                  disabled={checkingStatus}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3 text-sm font-black text-white shadow-lg shadow-brand/20 disabled:opacity-60"
+                >
+                  {checkingStatus ? 'Mengecek status...' : 'Cek Status Pembayaran'}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      ) : null}
     </motion.div>
   );
 }
