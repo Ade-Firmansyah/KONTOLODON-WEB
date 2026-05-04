@@ -9,9 +9,8 @@ interface LoginPageProps {
   onLogin: (payload: {
     username: string;
     password: string;
-    role: 'member' | 'reseller';
     remember: boolean;
-  }) => void;
+  }) => Promise<{ role: 'admin' | 'reseller' | 'member' } | void>;
   initialUsername: string;
 }
 
@@ -21,6 +20,7 @@ export function LoginPage({ onLogin, initialUsername }: LoginPageProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(true);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -39,15 +39,24 @@ export function LoginPage({ onLogin, initialUsername }: LoginPageProps) {
     };
   }, []);
 
-  const submit = (role: 'member' | 'reseller') => {
+  const submit = async () => {
     if (!username.trim() || !password.trim()) {
       setError('Username dan password wajib diisi.');
       return;
     }
 
     setError('');
-    onLogin({ username: username.trim(), password, role, remember });
-    navigate(username === 'admin' && password === 'admin230521' ? '/admin' : '/dashboard', { replace: true });
+    setLoading(true);
+
+    try {
+      const nextSession = await onLogin({ username: username.trim(), password, remember });
+      const role = nextSession && typeof nextSession === 'object' && 'role' in nextSession ? nextSession.role : 'member';
+      navigate(role === 'admin' ? '/admin' : '/dashboard', { replace: true });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Username atau password salah.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const openWhatsAppRegistration = () => {
@@ -150,7 +159,7 @@ export function LoginPage({ onLogin, initialUsername }: LoginPageProps) {
             className="mt-4 space-y-3"
             onSubmit={(event) => {
               event.preventDefault();
-              submit('member');
+              submit();
             }}
           >
             <label className="block space-y-2">
@@ -207,9 +216,10 @@ export function LoginPage({ onLogin, initialUsername }: LoginPageProps) {
 
             <button
               type="submit"
+              disabled={loading}
               className="flex w-full items-center justify-center gap-3 rounded-full bg-gradient-to-r from-brand-dark via-brand to-brand-light px-5 py-3 text-sm font-extrabold text-white shadow-[0_0_24px_rgba(255,0,127,.3)] transition hover:scale-[1.01] sm:py-3 sm:text-base"
             >
-              Login
+              {loading ? 'Memproses...' : 'Login'}
               <ArrowRight className="h-4 w-4" />
             </button>
 

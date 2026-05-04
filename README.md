@@ -1,7 +1,11 @@
 # Premiumin Plus Dashboard
 
-Frontend React untuk dashboard Premiumin Plus dengan tema gelap, aksen pink, dan layout responsif desktop.
-Seluruh data masih mock supaya siap disambungkan ke backend Node.js nanti.
+Frontend React dan backend Express untuk Premiumin Plus, middleware produk digital antara Premku API, database MySQL, dan user reseller/member.
+Data operasional diambil dari backend dan database, bukan dari dummy state frontend.
+
+Dokumentasi lengkap clone, instalasi, run lokal, dan deploy tersedia di:
+
+- `docs/CARA-PENGGUNAAN-DAN-DEPLOY.md`
 
 ## Tech Stack
 
@@ -34,13 +38,13 @@ http://localhost:3000
 
 Route terlindungi akan redirect ke `/login` jika session belum ada.
 
-## Login
+## Backend dan Database
 
-- Input username
-- Input password
-- Checkbox ingat saya
-- Login user / reseller
-- Login admin mock
+- Backend berjalan di `http://localhost:4000`
+- Frontend memakai `VITE_API_BASE_URL`
+- Database default: `apps_premhytam`
+- Jika database belum ada, backend akan membuat database dan tabel utama otomatis.
+- Admin pertama dibuat dari `ADMIN_USERNAME` dan `ADMIN_PASSWORD` jika database masih kosong.
 
 ## Dashboard
 
@@ -48,8 +52,7 @@ Route terlindungi akan redirect ke `/login` jika session belum ada.
 - Navbar / topbar
 - Kartu saldo dan statistik
 - API Key card
-- Chart mock
-- Notifikasi transaksi mock
+- Produk, saldo, transaksi, deposit, withdraw, dan markup dibaca dari API backend.
 - Menu komunitas, order, deposit, harga, riwayat, profil, bantuan, bot, dan dokumentasi
 
 ## Halaman Utama
@@ -77,8 +80,8 @@ Route terlindungi akan redirect ke `/login` jika session belum ada.
   - Mutasi saldo
 
 - `Profil`
-  - Data akun mock
-  - API credentials mock
+  - Data akun dari `/api/me`
+  - API credentials dari database
 
 - `Laporan Kendala`
   - Form tiket dan riwayat tiket
@@ -87,7 +90,7 @@ Route terlindungi akan redirect ke `/login` jika session belum ada.
   - Link bot WhatsApp dan Telegram
 
 - `Document`
-  - Ringkasan dokumentasi API mock
+  - Ringkasan dokumentasi API backend
 
 ## Fitur UI
 
@@ -112,5 +115,5 @@ src/
 
 ## Catatan
 
-Semua data saat ini masih mock dan siap diganti API backend tanpa mengubah alur utama UI.
-
+Login user/reseller/admin memakai API backend lokal di `backend/`, katalog produk dibaca dari endpoint API, dan markup admin ikut memengaruhi harga jual.
+ bagus

@@ -1,39 +1,53 @@
 ===========================================================
-                APPSPREMIUM STORE - PREMIUM SCRIPT
+          PREMIUMIN PLUS - LOTUS VOLT OFFICIAL LICENSE
 ===========================================================
-Copyright (c) 2026 - Marshep Ollo. All Rights Reserved.
 
-DENGAN MENGGUNAKAN SCRIPT INI, ANDA MENYETUJUI SYARAT & 
-KETENTUAN BERIKUT:
+Copyright (c) 2026 Lotus Volt. All Rights Reserved.
 
-1. KEPEMILIKAN
-   Script ini adalah karya asli dari Marshep Ollo. Hak cipta
-   penuh berada di tangan pengembang asli.
+Project ini adalah karya resmi Lotus Volt untuk sistem
+Premiumin Plus, yaitu platform middleware API, dashboard,
+wallet, order, deposit, withdraw, markup, discount, dan
+notifikasi berbasis database.
 
-2. LARANGAN PENJUALAN KEMBALI (RESTRICTION)
-   DILARANG KERAS menjual kembali script ini dalam bentuk 
-   apapun tanpa izin tertulis dari Marshep Ollo. Script ini 
-   dibagikan untuk penggunaan pribadi atau layanan bisnis 
-   Anda sendiri.
+Dengan menggunakan, menjalankan, memodifikasi, atau
+mendeploy project ini, Anda menyetujui ketentuan berikut:
 
-3. PENGEMBANGAN (MODIFICATION)
-   Anda diperbolehkan untuk memodifikasi, menambah fitur, 
-   atau mempercantik tampilan script ini sesuai kebutuhan 
-   bisnis Anda.
+1. Kepemilikan
+   Seluruh source code, struktur sistem, desain antarmuka,
+   dokumentasi, dan logic bisnis dalam project ini adalah
+   milik Lotus Volt, kecuali library pihak ketiga yang
+   memiliki lisensi masing-masing.
 
-4. ATRIBUSI & COPYRIGHT
-   DILARANG KERAS menghapus atau mengubah teks copyright 
-   "Powered by Marshep Ollo" atau atribusi pembuat yang 
-   ada di dalam kode maupun tampilan interface web. 
-   Hargailah keringat pembuat dengan tetap mencantumkan 
-   namanya.
+2. Penggunaan
+   Project ini boleh digunakan untuk menjalankan layanan
+   bisnis Premiumin Plus, dashboard reseller, dan API
+   internal sesuai kebutuhan pemilik project.
 
-5. PENYALAHGUNAAN
-   Segala bentuk kerugian yang ditimbulkan akibat penggunaan 
-   script ini di luar tanggung jawab pengembang (Marshep Ollo).
+3. Modifikasi
+   Pemilik project boleh memodifikasi, memperbaiki, dan
+   mengembangkan fitur sesuai kebutuhan operasional.
 
-"Hargai pembuatnya, maka rezeki bisnis lu bakal lancar."
+4. Distribusi dan Penjualan Ulang
+   Dilarang menjual ulang, membagikan ulang, mengklaim ulang,
+   atau mendistribusikan project ini sebagai karya pihak lain
+   tanpa izin tertulis dari Lotus Volt.
 
-Salam,
-Marshep Ollo
+5. Atribusi
+   Identitas "Lotus Volt" sebagai pembuat resmi project tidak
+   boleh dihapus dari dokumentasi, lisensi, atau atribusi
+   utama project.
+
+6. Keamanan
+   File rahasia seperti .env, API key Premku, password admin,
+   credential database, dan token deployment tidak boleh
+   dipublikasikan ke GitHub atau media publik lain.
+
+7. Batas Tanggung Jawab
+   Lotus Volt tidak bertanggung jawab atas kerugian yang
+   muncul karena salah konfigurasi, kebocoran credential,
+   penyalahgunaan API, atau penggunaan di luar alur sistem
+   yang sudah didokumentasikan.
+
+===========================================================
+                    Official by Lotus Volt
 ===========================================================

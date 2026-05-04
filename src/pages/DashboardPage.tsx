@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   Banknote,
   BarChart3,
@@ -13,9 +13,7 @@ import {
   HelpCircle,
   Layers3,
   MessageCircle,
-  Minus,
   Phone,
-  Plus,
   ReceiptText,
   ShieldCheck,
   ShoppingBag,
@@ -28,6 +26,8 @@ import {
 import { motion } from 'motion/react';
 import { AppShell, type NavSection } from '../components/layout/AppShell';
 import { ApiKeyCard } from '../components/ApiKeyCard';
+import { premiuminApi, type DashboardSummaryRecord, type DepositRecord, type OrderRecord, type ProductRecord } from '../services/api';
+import { getApiKey } from '../store/useAuth';
 import { formatCurrency, formatNumber, getGreeting } from '../utils/format';
 import cardArt from '../asset/logo-upscale.png';
 import BotWA from './botwa';
@@ -46,6 +46,7 @@ interface DashboardPageProps {
   session: {
     username: string;
     role: string;
+    apiKey: string;
   };
   onLogout: () => void;
 }
@@ -81,90 +82,8 @@ const sections: NavSection[] = [
   },
 ];
 
-const topSpenders = [
-  { rank: 1, name: '6289 xxx 38', amount: 20000, badge: 'text-amber-400' },
-  { rank: 2, name: '6287 xxx 45', amount: 20000, badge: 'text-slate-300' },
-  { rank: 3, name: '6282 xxx 57', amount: 18000, badge: 'text-orange-300' },
-];
-
-const recentOrders = [
-  { product: 'Viu Premium Lifetime', time: '01 May 2026, 02:37', price: 550, status: 'Sukses' },
-  { product: 'HMA VPN 1 Bulan', time: '30 Apr 2026, 20:25', price: 4000, status: 'Sukses' },
-  { product: 'Link ChatGPT Go 3 Bulan', time: '30 Apr 2026, 20:07', price: 3000, status: 'Sukses' },
-];
-
-const stats = [
-  { label: 'Total Deposit', value: 92142, icon: Coins, tone: 'emerald' as const, suffix: '', line: [18, 20, 17, 26, 21, 23, 20, 28, 25, 29] },
-  { label: 'Total Belanja', value: 40000, icon: ShoppingCart, tone: 'pink' as const, suffix: '', line: [10, 13, 14, 11, 16, 12, 15, 14, 18, 20] },
-  { label: 'Total Pesanan', value: 25, icon: ClipboardList, tone: 'blue' as const, suffix: 'Trx', line: [8, 10, 9, 12, 11, 12, 13, 14, 16, 18] },
-  { label: 'Produk Aktif', value: 30, icon: BarChart3, tone: 'amber' as const, suffix: 'Layanan', line: [12, 13, 12, 14, 13, 15, 14, 16, 17, 18] },
-];
-
-const products = [
-  { name: 'Capcut 7 Day', price: 5900, note: 'Paling populer', tag: 'Instan' },
-  { name: 'Capcut 30 Day', price: 14900, note: 'Lebih hemat', tag: 'Best' },
-  { name: 'Netflix', price: 25900, note: 'Multi device', tag: 'Premium' },
-  { name: 'ChatGPT 1 Bulan', price: 34900, note: 'Akses cepat', tag: 'AI' },
-  { name: 'YouTube Premium', price: 29900, note: 'Tanpa iklan', tag: 'Video' },
-];
-
-const waOrderLink = 'https://wa.me/6285888009931?text=Masih%20ada%20slot%20join%20reseller%20%3F';
-
 const quickDeposits = [10000, 25000, 50000, 100000, 250000, 500000];
 const waDepositLink = 'https://wa.me/6285888009931?text=Halo%20Admin%2C%20saya%20ingin%20top%20up%20saldo.';
-
-const orderHistory = [
-  { title: 'Capcut 30 Day', time: '01 Mei 2026, 10:12', amount: 14900, status: 'Sukses' },
-  { title: 'Netflix', time: '01 Mei 2026, 09:54', amount: 25900, status: 'Sukses' },
-  { title: 'ChatGPT 1 Bulan', time: '30 Apr 2026, 21:32', amount: 34900, status: 'Pending' },
-];
-
-const depositHistory = [
-  { title: 'Deposit QRIS', time: '01 Mei 2026, 08:40', amount: 50000, status: 'Sukses' },
-  { title: 'Deposit Transfer', time: '30 Apr 2026, 19:20', amount: 100000, status: 'Sukses' },
-  { title: 'Deposit E-Wallet', time: '30 Apr 2026, 17:05', amount: 25000, status: 'Pending' },
-];
-
-const mutationHistory = [
-  { title: 'Order Capcut 30 Day', type: 'Debit', amount: 14900, time: '01 Mei 2026, 10:12' },
-  { title: 'Refund Test', type: 'Credit', amount: 5000, time: '01 Mei 2026, 09:10' },
-  { title: 'Deposit QRIS', type: 'Credit', amount: 50000, time: '01 Mei 2026, 08:40' },
-];
-
-const profileItems = [
-  { label: 'Username', value: 'digitalpanel123' },
-  { label: 'Role', value: 'Member' },
-  { label: 'Status', value: 'Aktif' },
-  { label: 'Level', value: 'Premium User' },
-];
-
-const supportTopics = [
-  'Login gagal',
-  'Order pending',
-  'Deposit belum masuk',
-  'Harga produk berubah',
-];
-
-const botLinks = [
-  {
-    title: 'Buat Akun Bot WA',
-    description: 'Siapkan bot WhatsApp untuk notifikasi dan order otomatis.',
-    href: 'https://wa.me/6285888009931?text=Masih%20ada%20slot%20join%20reseller%20%3F',
-    icon: MessageCircle,
-  },
-  {
-    title: 'Buat Bot Telegram',
-    description: 'Tambahkan bot Telegram untuk notifikasi dan integrasi channel.',
-    href: 'https://t.me/+1tkWNfTUfEg1MTY1',
-    icon: Send,
-  },
-];
-
-const docsList = [
-  { title: 'API Docs', desc: 'Panduan endpoint dan struktur request mock.' },
-  { title: 'Webhook', desc: 'Contoh payload notifikasi transaksi.' },
-  { title: 'Status API', desc: 'Daftar status sukses, pending, dan gagal.' },
-];
 
 const pageTitles: Record<string, string> = {
   '/dashboard/komunitas-wa': 'Komunitas WA',
@@ -327,65 +246,6 @@ function ChannelCard({
   );
 }
 
-function ProductList({
-  items,
-  cta = 'Order Sekarang',
-}: {
-  items: { name: string; price: number; note: string; tag: string }[];
-  cta?: string | null;
-}) {
-  return (
-    <div className="space-y-3">
-      {items.map((item) => (
-        <div key={item.name} className="rounded-[1.2rem] border border-white/10 bg-[#0f0b15] px-4 py-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-white">{item.name}</p>
-              <p className="mt-1 text-xs text-white/40">{item.note}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm font-bold text-white">{formatCurrency(item.price)}</p>
-              <span className="mt-1 inline-flex rounded-full border border-brand/20 bg-brand/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white">
-                {item.tag}
-              </span>
-            </div>
-          </div>
-          {cta ? (
-            <button className="mt-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/80 transition hover:bg-white/10">
-              {cta}
-            </button>
-          ) : null}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function ListTimeline({
-  items,
-}: {
-  items: { title: string; time: string; amount: number; status: string }[];
-}) {
-  return (
-    <div className="space-y-3">
-      {items.map((item) => (
-        <div key={item.title + item.time} className="flex items-center justify-between gap-4 rounded-[1.2rem] border border-white/10 bg-[#0f0b15] px-4 py-4">
-          <div>
-            <p className="text-sm font-semibold text-white">{item.title}</p>
-            <p className="mt-1 text-xs text-white/40">{item.time}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-sm font-bold text-white">{formatCurrency(item.amount)}</p>
-            <span className="mt-1 inline-flex rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-300">
-              {item.status}
-            </span>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function MenuPage({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
@@ -396,139 +256,27 @@ function MenuPage({ title, subtitle, children }: { title: string; subtitle: stri
   );
 }
 
-function OrderCheckout() {
-  const [selectedProduct, setSelectedProduct] = useState(products[0]);
-  const [qty, setQty] = useState(1);
-  const total = selectedProduct.price * qty;
-
-  return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="space-y-4 xl:max-h-[calc(100vh-112px)] xl:overflow-hidden">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-2xl font-extrabold tracking-tight text-white">Checkout Produk</h2>
-          <p className="mt-1 text-xs text-white/55">Selesaikan pesanan kamu dalam beberapa langkah mudah.</p>
-        </div>
-        <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-300">
-          <ShieldCheck className="h-3.5 w-3.5" />
-          100% Secure Checkout
-        </span>
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-[1.02fr_0.98fr]">
-        <section className="min-h-[300px] rounded-[1.25rem] border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.08),rgba(255,0,127,0.05))] p-4 shadow-[0_14px_32px_rgba(0,0,0,0.18)]">
-          <div className="flex h-full flex-col justify-center rounded-[1rem] border border-white/10 bg-[#0f0b15]/70 p-5 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/35">
-              <ShoppingBag className="h-5 w-5" />
-            </div>
-            <h3 className="mt-4 text-lg font-extrabold text-white">{selectedProduct.name}</h3>
-            <p className="mx-auto mt-2 max-w-md text-xs leading-5 text-white/55">{selectedProduct.note}. Produk dikirim ke nomor WhatsApp setelah order diproses.</p>
-            <div className="mx-auto mt-4 inline-flex items-center gap-3 rounded-xl border border-brand/20 bg-brand/10 px-4 py-2">
-              <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">Harga</span>
-              <strong className="text-xl text-brand">{formatCurrency(selectedProduct.price)}</strong>
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-[1.25rem] border border-white/10 bg-white/5 p-4 shadow-[0_14px_32px_rgba(0,0,0,0.18)]">
-          <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand ring-1 ring-brand/20">
-                <ShoppingCart className="h-5 w-5" />
-              </div>
-              <h3 className="text-xl font-extrabold text-white">Order Detail</h3>
-            </div>
-            <div className="text-right">
-              <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/35">Saldo Kamu</p>
-              <p className="mt-1 text-lg font-black text-white">Rp50.344</p>
-            </div>
-          </div>
-
-          <div className="mt-4 space-y-3.5">
-            <label className="block">
-              <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">Pilih Layanan</span>
-              <select
-                value={selectedProduct.name}
-                onChange={(event) => {
-                  const nextProduct = products.find((item) => item.name === event.target.value);
-                  if (nextProduct) setSelectedProduct(nextProduct);
-                }}
-                className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#0f0b15] px-3.5 py-3 text-sm font-semibold text-white outline-none transition focus:border-brand/60"
-              >
-                {products.map((item) => (
-                  <option key={item.name} value={item.name}>
-                    {item.name} - {formatCurrency(item.price)}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <div className="grid gap-3 sm:grid-cols-[1fr_132px]">
-              <label className="block">
-                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">Kirim ke WA</span>
-                <div className="mt-1.5 flex items-center gap-2.5 rounded-xl border border-white/10 bg-[#0f0b15] px-3.5 py-3 text-sm font-semibold text-white">
-                  <MessageCircle className="h-4 w-4 text-emerald-300" />
-                  6285888009931
-                </div>
-              </label>
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">Qty</span>
-                <div className="mt-1.5 grid grid-cols-3 overflow-hidden rounded-xl border border-white/10 bg-[#0f0b15]">
-                  <button type="button" onClick={() => setQty((value) => Math.max(1, value - 1))} className="grid h-[44px] place-items-center text-white/70 transition hover:bg-white/5">
-                    <Minus className="h-4 w-4" />
-                  </button>
-                  <div className="grid h-[44px] place-items-center border-x border-white/10 text-sm font-bold text-white">{qty}</div>
-                  <button type="button" onClick={() => setQty((value) => value + 1)} className="grid h-[44px] place-items-center text-white/70 transition hover:bg-white/5">
-                    <Plus className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-xl bg-[#0b0f1a] px-4 py-3.5">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">Total Tagihan</p>
-                  <p className="mt-1 text-xs font-semibold text-emerald-300">{selectedProduct.name}</p>
-                </div>
-                <p className="text-2xl font-black text-white">{formatCurrency(total)}</p>
-              </div>
-            </div>
-
-            <button className="w-full rounded-xl bg-brand px-5 py-3 text-xs font-extrabold uppercase tracking-[0.16em] text-white shadow-lg shadow-brand/20 transition hover:scale-[1.01]">
-              Order Sekarang
-            </button>
-          </div>
-        </section>
-      </div>
-
-      <section className="rounded-[1.25rem] border border-emerald-500/20 bg-[linear-gradient(145deg,rgba(16,185,129,0.12),rgba(255,255,255,0.04))] p-4">
-        <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
-          <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-300">
-              <Phone className="h-6 w-6" />
-            </div>
-            <div>
-              <h3 className="text-lg font-extrabold text-white">Masih ada pertanyaan?</h3>
-              <p className="mt-1 max-w-lg text-xs leading-5 text-white/55">Konsultasikan kebutuhanmu langsung ke tim kami via WhatsApp.</p>
-            </div>
-          </div>
-          <a
-            href={waOrderLink}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex min-w-[220px] items-center justify-center gap-2.5 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-extrabold text-white shadow-lg shadow-emerald-500/20 transition hover:scale-[1.01]"
-          >
-            <MessageCircle className="h-5 w-5" />
-            Chat WhatsApp
-          </a>
-        </div>
-      </section>
-    </motion.div>
-  );
-}
-
 function DepositTopup() {
   const [amount, setAmount] = useState(25000);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [depositResult, setDepositResult] = useState<DepositRecord | null>(null);
+  const apiKey = getApiKey();
+
+  const submitDeposit = async () => {
+    setLoading(true);
+    setError('');
+    setDepositResult(null);
+
+    try {
+      const response = await premiuminApi.deposit({ amount }, apiKey || undefined);
+      setDepositResult(response.data);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Gagal membuat deposit.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="space-y-4 xl:max-h-[calc(100vh-112px)] xl:overflow-hidden">
@@ -593,8 +341,21 @@ function DepositTopup() {
             </div>
           </div>
 
-          <button className="mt-6 inline-flex w-full items-center justify-center gap-3 rounded-xl bg-brand px-5 py-3.5 text-xs font-extrabold uppercase tracking-[0.16em] text-white shadow-lg shadow-brand/20 transition hover:scale-[1.01]">
-            Lanjut Pembayaran
+          {error ? <div className="mt-4 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</div> : null}
+          {depositResult ? (
+            <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+              Invoice {depositResult.invoice} dibuat. Saldo baru masuk setelah status pembayaran success.
+              {depositResult.qr_data ? <p className="mt-2 break-all text-xs text-white/65">QR: {depositResult.qr_data}</p> : null}
+            </div>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={submitDeposit}
+            disabled={loading}
+            className="mt-6 inline-flex w-full items-center justify-center gap-3 rounded-xl bg-brand px-5 py-3.5 text-xs font-extrabold uppercase tracking-[0.16em] text-white shadow-lg shadow-brand/20 transition hover:scale-[1.01] disabled:opacity-60"
+          >
+            {loading ? 'Membuat pembayaran...' : 'Lanjut Pembayaran'}
             <ArrowRight className="h-4 w-4" />
           </button>
         </section>
@@ -656,11 +417,86 @@ function DepositTopup() {
 export function DashboardPage({ session, onLogout }: DashboardPageProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const [saldo, setSaldo] = useState(0);
+  const [summary, setSummary] = useState<DashboardSummaryRecord | null>(null);
+  const [dashboardProducts, setDashboardProducts] = useState<ProductRecord[]>([]);
+  const [recentOrderRows, setRecentOrderRows] = useState<OrderRecord[]>([]);
+  const [dashboardLoading, setDashboardLoading] = useState(true);
+  const [saldoError, setSaldoError] = useState('');
   const path = location.pathname.replace(/\/+$/, '') || '/dashboard';
   const accountLabel = session.role === 'admin' ? 'Admin' : session.role === 'reseller' ? 'Reseller' : 'Member';
   const greeting = getGreeting();
 
   const section = path === '/dashboard' ? null : path;
+
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      setDashboardLoading(true);
+      try {
+        const [meResponse, summaryResponse, productResponse, orderResponse] = await Promise.all([
+          premiuminApi.me(session.apiKey),
+          premiuminApi.dashboardSummary(session.apiKey),
+          premiuminApi.products(session.apiKey),
+          premiuminApi.transactions(session.apiKey),
+        ]);
+        setSaldo(meResponse.data.saldo);
+        setSummary(summaryResponse.data);
+        setDashboardProducts(productResponse.data);
+        setRecentOrderRows(orderResponse.data.slice(0, 3));
+        setSaldoError('');
+      } catch (caught) {
+        setSaldoError(caught instanceof Error ? caught.message : 'Gagal memuat saldo.');
+      } finally {
+        setDashboardLoading(false);
+      }
+    };
+
+    void loadDashboardData();
+
+    const handleBalanceRefresh = () => {
+      void loadDashboardData();
+    };
+    window.addEventListener('premiuminplus:balance-updated', handleBalanceRefresh);
+
+    return () => {
+      window.removeEventListener('premiuminplus:balance-updated', handleBalanceRefresh);
+    };
+  }, [session.apiKey]);
+
+  const dashboardStats = [
+    {
+      label: 'Total Deposit',
+      value: summary?.total_deposit_amount || 0,
+      icon: Coins,
+      tone: 'emerald' as const,
+      suffix: '',
+      line: [2, 4, 3, 5, 4, 6, 5, 7, 8, 9],
+    },
+    {
+      label: 'Total Belanja',
+      value: summary?.total_spent || 0,
+      icon: ShoppingCart,
+      tone: 'pink' as const,
+      suffix: '',
+      line: [1, 2, 2, 3, 2, 4, 3, 5, 5, 6],
+    },
+    {
+      label: 'Total Pesanan',
+      value: summary?.total_transactions || 0,
+      icon: ClipboardList,
+      tone: 'blue' as const,
+      suffix: 'Trx',
+      line: [1, 1, 2, 2, 3, 3, 4, 4, 5, 6],
+    },
+    {
+      label: 'Produk Aktif',
+      value: summary?.active_products || dashboardProducts.length,
+      icon: BarChart3,
+      tone: 'amber' as const,
+      suffix: 'Layanan',
+      line: [1, 2, 3, 4, 4, 5, 6, 6, 7, 8],
+    },
+  ];
 
   const sectionContent: Record<string, ReactNode> = {
     '/dashboard/komunitas-wa': (
@@ -727,6 +563,7 @@ export function DashboardPage({ session, onLogout }: DashboardPageProps) {
         subtitle={`${greeting}, ${session.username}. ${accountLabel} mode aktif.`}
         username={session.username}
         role={accountLabel}
+        saldo={saldo}
         sections={sections}
         onLogout={onLogout}
       >
@@ -745,6 +582,7 @@ export function DashboardPage({ session, onLogout }: DashboardPageProps) {
       subtitle={`${greeting}, ${session.username}. Kelola transaksi dan akses API kamu dengan mudah di Premiumin Plus.`}
       username={session.username}
       role={accountLabel}
+      saldo={saldo}
       sections={sections}
       onLogout={onLogout}
     >
@@ -769,64 +607,67 @@ export function DashboardPage({ session, onLogout }: DashboardPageProps) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25 }}
-            className="rounded-[1.55rem] border border-white/10 bg-[linear-gradient(145deg,rgba(15,11,21,0.96),rgba(13,9,18,0.98))] p-5 shadow-[0_0_32px_rgba(255,0,127,.06)]"
+            className="rounded-[1.35rem] border border-white/10 bg-[linear-gradient(145deg,rgba(15,11,21,0.96),rgba(13,9,18,0.98))] p-4 shadow-[0_0_28px_rgba(255,0,127,.06)] lg:p-5"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/35">Premiumin Card</p>
-                <p className="mt-3 text-sm text-white/60">Saldo Tersedia</p>
+                <p className="mt-2 text-sm font-semibold text-white/70">Saldo aktif siap transaksi</p>
                 <div className="mt-1 flex items-end gap-2">
                   <span className="text-lg font-bold text-brand">Rp</span>
-                  <span className="text-4xl font-black tracking-tight text-white">61.344</span>
+                  <span className="text-[2.15rem] font-black leading-none tracking-tight text-white sm:text-4xl">{formatNumber(saldo)}</span>
                 </div>
+                <p className="mt-2 max-w-xs text-xs leading-5 text-white/40">Dana utama untuk order produk, deposit, dan mutasi akun.</p>
+                {saldoError ? <p className="mt-2 text-xs text-rose-200">{saldoError}</p> : null}
               </div>
-              <button className="rounded-2xl border border-white/10 bg-white/5 p-3 text-white/70 transition-transform duration-200 hover:scale-105">
-                <Sparkles className="h-5 w-5" />
+              <button className="rounded-xl border border-white/10 bg-white/5 p-2.5 text-white/70 transition-transform duration-200 hover:scale-105">
+                <Sparkles className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="mt-5 grid items-center gap-4 lg:grid-cols-[1fr_0.9fr]">
+            <div className="mt-4 grid items-center gap-3 lg:grid-cols-[1fr_0.82fr]">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/35">Keseimbangan</p>
-                <p className="mt-2 text-sm text-white/60">Saldo kartu utama</p>
-                <p className="mt-1 text-2xl font-black text-white">{formatCurrency(55844)}</p>
-                <p className="mt-5 text-[10px] font-bold uppercase tracking-[0.24em] text-white/35">Card Holder</p>
-                <p className="mt-1 text-base font-extrabold tracking-tight">{session.username.toUpperCase()}</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/35">Card Holder</p>
+                <p className="mt-1 text-sm font-extrabold tracking-tight text-white">{session.username.toUpperCase()}</p>
+                <p className="mt-1 text-xs text-white/40">Premium access member</p>
               </div>
               <img
                 src={cardArt}
                 alt="Premiumin Card"
-                className="mx-auto h-44 w-full object-contain drop-shadow-[0_10px_26px_rgba(255,0,127,.22)]"
+                className="mx-auto h-32 w-full object-contain drop-shadow-[0_10px_24px_rgba(255,0,127,.2)] sm:h-36 lg:h-40"
               />
             </div>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <button
                 onClick={() => navigate('/dashboard/deposit-saldo')}
-                className="rounded-2xl bg-brand px-4 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand/20 transition-transform duration-200 hover:scale-[1.01]"
+                className="rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-brand/20 transition-transform duration-200 hover:scale-[1.01]"
               >
                 Isi Saldo
               </button>
               <button
                 onClick={() => navigate('/dashboard/mutasi-saldo')}
-                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 text-sm font-semibold text-white/80 transition-transform duration-200 hover:scale-[1.01] hover:bg-white/10"
+                className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white/80 transition-transform duration-200 hover:scale-[1.01] hover:bg-white/10"
               >
                 Mutasi
               </button>
             </div>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25, delay: 0.04 }}
-          >
-            <ApiKeyCard username={session.username} />
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: 0.04 }}>
+            {session.role === 'reseller' ? (
+              <ApiKeyCard username={session.username} apiKey={session.apiKey} />
+            ) : (
+              <div className="rounded-[1.75rem] border border-white/10 bg-white/5 p-5">
+                <p className="text-sm font-bold text-white">API Credentials</p>
+                <p className="mt-2 text-sm text-white/55">Fitur tidak tersedia untuk role {accountLabel}. API key hanya aktif untuk reseller.</p>
+              </div>
+            )}
           </motion.div>
         </section>
 
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {stats.map((item, index) => {
+          {dashboardStats.map((item, index) => {
             const Icon = item.icon;
             const toneClass =
               item.tone === 'emerald'
@@ -852,7 +693,7 @@ export function DashboardPage({ session, onLogout }: DashboardPageProps) {
                   <div className="flex-1">
                     <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/35">{item.label}</p>
                     <p className="mt-2 text-xl font-extrabold tracking-tight text-white">
-                      {typeof item.value === 'number' ? formatCurrency(item.value) : item.value}
+                      {item.label === 'Total Pesanan' || item.label === 'Produk Aktif' ? formatNumber(item.value) : formatCurrency(item.value)}
                       {item.suffix ? <span className="ml-2 text-sm font-semibold text-white/55">{item.suffix}</span> : null}
                     </p>
                   </div>
@@ -867,19 +708,20 @@ export function DashboardPage({ session, onLogout }: DashboardPageProps) {
 
         <section className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr_0.95fr]">
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
-            <SectionShell title="Top Sultan" subtitle="Top spender">
+            <SectionShell title="Produk Aktif" subtitle="Katalog database">
               <div className="space-y-3">
-                {topSpenders.map((item) => (
-                  <div key={item.rank} className="rounded-[1.2rem] border border-white/10 bg-[#0f0b15] px-4 py-4">
+                {dashboardProducts.slice(0, 3).map((item) => (
+                  <div key={item.id} className="rounded-[1.2rem] border border-white/10 bg-[#0f0b15] px-4 py-4">
                     <div className="flex items-center justify-between gap-4">
                       <div>
                         <p className="text-sm font-semibold text-white">{item.name}</p>
-                        <p className="text-xs text-white/35">Top Spender</p>
+                        <p className="text-xs text-white/35">Stok {item.stock}</p>
                       </div>
-                      <p className={`text-lg font-extrabold ${item.badge}`}>{formatNumber(item.amount / 1000)}k</p>
+                      <p className="text-lg font-extrabold text-brand">{formatCurrency(item.price_sell)}</p>
                     </div>
                   </div>
                 ))}
+                {!dashboardLoading && !dashboardProducts.length ? <p className="text-sm text-white/45">Belum ada produk aktif.</p> : null}
               </div>
             </SectionShell>
           </motion.div>
@@ -887,24 +729,26 @@ export function DashboardPage({ session, onLogout }: DashboardPageProps) {
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24 }}>
             <SectionShell title="Riwayat Terakhir" subtitle="Transaksi terbaru">
               <div className="space-y-4">
-                {recentOrders.map((row) => (
-                  <div key={row.product} className="flex items-center justify-between gap-4 border-b border-white/10 pb-4 last:border-0 last:pb-0">
+                {recentOrderRows.map((row) => (
+                  <div key={row.invoice} className="flex items-center justify-between gap-4 border-b border-white/10 pb-4 last:border-0 last:pb-0">
                     <div>
-                      <p className="text-sm font-semibold text-white">{row.product}</p>
-                      <p className="mt-1 text-xs text-white/35">{row.time}</p>
+                      <p className="text-sm font-semibold text-white">{row.product_name || row.invoice}</p>
+                      <p className="mt-1 text-xs text-white/35">{row.created_at || '-'}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-bold text-white">{formatCurrency(row.price)}</p>
+                      <p className="text-sm font-bold text-white">{formatCurrency(row.total_price || 0)}</p>
                       <span className="mt-1 inline-flex rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-300">
-                        {row.status}
+                        {row.status || 'pending'}
                       </span>
                     </div>
                   </div>
                 ))}
+                {!dashboardLoading && !recentOrderRows.length ? <p className="text-sm text-white/45">Belum ada transaksi.</p> : null}
               </div>
             </SectionShell>
           </motion.div>
 
+          {session.role === 'reseller' ? (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28 }}>
             <SectionShell title="API Console" subtitle="Developer access">
               <div className="rounded-[1.1rem] border border-white/10 bg-[#0b0f1a] p-4 font-mono text-[11px] leading-6 text-white/80">
@@ -926,9 +770,9 @@ export function DashboardPage({ session, onLogout }: DashboardPageProps) {
 {`curl -X POST \\
 https://premiumin.plus/api/order \\
 -H "Content-Type: application/json" \\
+-H "x-api-key: ************" \\
 -d '{
-  "api_key": "************",
-  "product_id": "netflix_1b",
+  "product_id": 1,
   "qty": 1
 }'
 
@@ -937,6 +781,7 @@ developer@premiumin:~$`}
               </div>
             </SectionShell>
           </motion.div>
+          ) : null}
         </section>
 
         <footer className="py-2 text-center text-xs text-white/45">
