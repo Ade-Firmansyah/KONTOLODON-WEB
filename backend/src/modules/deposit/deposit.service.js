@@ -7,11 +7,27 @@ function toMysqlDate(value = new Date()) {
   return new Date(value).toISOString().slice(0, 19).replace('T', ' ');
 }
 
-function normalizeDepositStatus(value) {
-  const status = String(value || '').toLowerCase();
-  if (['success', 'sukses', 'paid'].includes(status)) return 'success';
-  if (['failed', 'fail', 'gagal', 'error', 'cancel', 'canceled', 'cancelled'].includes(status)) return 'failed';
-  if (['expired', 'expire'].includes(status)) return 'expired';
+function normalizeDepositStatus(value, payload = {}) {
+  const candidates = [
+    value,
+    payload?.status,
+    payload?.success,
+    payload?.pay_status,
+    payload?.transaction_status,
+    payload?.message,
+    payload?.data?.status,
+    payload?.data?.success,
+    payload?.data?.pay_status,
+    payload?.data?.transaction_status,
+    payload?.data?.message,
+  ]
+    .filter((item) => item !== undefined && item !== null)
+    .map((item) => String(item).toLowerCase());
+
+  const text = candidates.join(' ');
+  if (/\b(success|sukses|paid|settlement|settled|completed|complete|berhasil|lunas)\b/.test(text)) return 'success';
+  if (/\b(failed|fail|gagal|error|cancel|canceled|cancelled|rejected)\b/.test(text)) return 'failed';
+  if (/\b(expired|expire|timeout|timed out)\b/.test(text)) return 'expired';
   return 'pending';
 }
 
@@ -21,6 +37,7 @@ function mapDepositRow(row) {
     id: row.id,
     user_id: row.user_id,
     invoice: row.invoice,
+    premku_invoice: row.premku_invoice || null,
     amount: Number(row.amount || 0),
     total_bayar: Number(row.total_bayar || 0),
     status: row.status,
@@ -63,10 +80,19 @@ export async function createDeposit(user, amount) {
   }
 
   const qrValue = typeof qrData === 'string' ? qrData : JSON.stringify(qrData);
+  const premkuInvoice =
+    payment?.invoice ||
+    payment?.ref_id ||
+    payment?.data?.invoice ||
+    payment?.data?.ref_id ||
+    payment?.data?.trx_id ||
+    payment?.trx_id ||
+    invoice;
 
   return saveDeposit({
     user_id: user.id,
     invoice,
+    premku_invoice: String(premkuInvoice),
     amount: numericAmount,
     total_bayar: Number(payment?.total_bayar ?? payment?.data?.total_bayar ?? numericAmount),
     qr_data: qrValue,
@@ -76,7 +102,19 @@ export async function createDeposit(user, amount) {
 
 export async function applyDepositSuccess(invoice, externalResponse = {}) {
   return transaction(async (connection) => {
-    const [rows] = await connection.query('SELECT * FROM deposits WHERE invoice = ? FOR UPDATE', [invoice]);
+    const [rows] = await connection.query(
+      `SELECT *
+       FROM deposits
+       WHERE invoice = ?
+          OR premku_invoice = ?
+          OR JSON_UNQUOTE(JSON_EXTRACT(external_response, '$.invoice')) = ?
+          OR JSON_UNQUOTE(JSON_EXTRACT(external_response, '$.ref_id')) = ?
+          OR JSON_UNQUOTE(JSON_EXTRACT(external_response, '$.data.invoice')) = ?
+          OR JSON_UNQUOTE(JSON_EXTRACT(external_response, '$.data.ref_id')) = ?
+       LIMIT 1
+       FOR UPDATE`,
+      [invoice, invoice, invoice, invoice, invoice, invoice],
+    );
     const deposit = rows[0];
     if (!deposit) {
       const error = new Error('Deposit tidak ditemukan');
@@ -103,25 +141,25 @@ export async function applyDepositSuccess(invoice, externalResponse = {}) {
 
     await connection.query(
       `UPDATE deposits
-       SET status = 'success', external_response = ?, processed_at = ?, updated_at = CURRENT_TIMESTAMP
-       WHERE invoice = ? AND processed_at IS NULL AND status <> 'success'`,
-      [JSON.stringify(externalResponse ?? parseDbJson(deposit.external_response, null)), processedAt, invoice],
+       SET status = 'success', external_status_response = ?, processed_at = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ? AND processed_at IS NULL AND status <> 'success'`,
+      [JSON.stringify(externalResponse ?? parseDbJson(deposit.external_response, null)), processedAt, deposit.id],
     );
     await connection.query('UPDATE users SET saldo = ? WHERE id = ?', [after, deposit.user_id]);
     await connection.query(
       `INSERT INTO saldo_logs
         (user_id, type, amount, balance_before, balance_after, reference, notes)
        VALUES (?, 'credit', ?, ?, ?, ?, ?)`,
-      [deposit.user_id, amount, before, after, invoice, 'deposit-success'],
+      [deposit.user_id, amount, before, after, deposit.invoice, 'deposit-success'],
     );
 
-    const [updatedRows] = await connection.query('SELECT * FROM deposits WHERE invoice = ? LIMIT 1', [invoice]);
+    const [updatedRows] = await connection.query('SELECT * FROM deposits WHERE id = ? LIMIT 1', [deposit.id]);
     return mapDepositRow(updatedRows[0] || deposit);
   });
 }
 
 export async function updateDepositStatus(invoice, status, externalResponse = {}) {
-  const normalizedStatus = normalizeDepositStatus(status);
+  const normalizedStatus = normalizeDepositStatus(status, externalResponse);
   if (normalizedStatus === 'success') {
     return applyDepositSuccess(invoice, externalResponse);
   }
@@ -142,24 +180,37 @@ export async function refreshDepositStatus(invoice) {
     return deposit;
   }
 
-  const externalInvoice =
-    deposit.external_response?.invoice ||
-    deposit.external_response?.data?.invoice ||
-    deposit.external_response?.ref_id ||
-    deposit.external_response?.data?.ref_id ||
-    invoice;
+  const candidateInvoices = [
+    deposit.premku_invoice,
+    deposit.external_response?.invoice,
+    deposit.external_response?.data?.invoice,
+    deposit.external_response?.ref_id,
+    deposit.external_response?.data?.ref_id,
+    invoice,
+  ].filter(Boolean);
 
   let statusResponse;
-  try {
-    statusResponse = await premkuPayStatus(externalInvoice);
-  } catch (error) {
+  let lastError = null;
+  for (const candidateInvoice of [...new Set(candidateInvoices.map(String))]) {
+    try {
+      statusResponse = await premkuPayStatus(candidateInvoice);
+      break;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  if (!statusResponse) {
     const updated = await updateDeposit(invoice, {
-      external_status_response: { message: error instanceof Error ? error.message : 'Premku pay status failed' },
+      external_status_response: { message: lastError instanceof Error ? lastError.message : 'Premku pay status failed' },
     });
     return updated || findDepositByInvoice(invoice);
   }
 
-  const nextStatus = normalizeDepositStatus(statusResponse?.pay_status ?? statusResponse?.status ?? statusResponse?.data?.status);
+  const nextStatus = normalizeDepositStatus(
+    statusResponse?.pay_status ?? statusResponse?.status ?? statusResponse?.data?.status,
+    statusResponse,
+  );
   if (nextStatus === 'success') {
     return applyDepositSuccess(invoice, statusResponse);
   }

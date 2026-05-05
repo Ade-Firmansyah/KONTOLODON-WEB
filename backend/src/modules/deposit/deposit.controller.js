@@ -13,7 +13,18 @@ export async function deposit(req, res, next) {
 }
 
 export async function myDeposits(req, res) {
-  const data = await listDepositsByUser(req.user.id);
+  const deposits = await listDepositsByUser(req.user.id);
+  const pendingDeposits = deposits.filter((depositItem) => depositItem.status === 'pending').slice(0, 10);
+
+  for (const depositItem of pendingDeposits) {
+    try {
+      await refreshDepositStatus(depositItem.invoice);
+    } catch {
+      // History must still load even if Premku status check is temporarily unavailable.
+    }
+  }
+
+  const data = pendingDeposits.length ? await listDepositsByUser(req.user.id) : deposits;
   res.json({ status: true, data });
 }
 

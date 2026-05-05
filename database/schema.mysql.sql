@@ -87,6 +87,7 @@ CREATE TABLE IF NOT EXISTS deposits (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,
   invoice VARCHAR(80) NOT NULL UNIQUE,
+  premku_invoice VARCHAR(80) NULL,
   amount BIGINT NOT NULL,
   total_bayar BIGINT NOT NULL,
   status ENUM('pending', 'success', 'failed', 'expired') NOT NULL DEFAULT 'pending',
@@ -98,6 +99,7 @@ CREATE TABLE IF NOT EXISTS deposits (
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id),
   INDEX idx_deposits_user_id (user_id),
+  INDEX idx_deposits_premku_invoice (premku_invoice),
   INDEX idx_deposits_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

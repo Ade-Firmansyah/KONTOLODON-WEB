@@ -6,6 +6,7 @@ function toDeposit(row) {
     id: row.id,
     user_id: row.user_id,
     invoice: row.invoice,
+    premku_invoice: row.premku_invoice || null,
     amount: Number(row.amount || 0),
     total_bayar: Number(row.total_bayar || 0),
     status: row.status,
@@ -19,18 +20,30 @@ function toDeposit(row) {
 }
 
 async function getDepositRow(invoice) {
-  const rows = await query('SELECT * FROM deposits WHERE invoice = ? LIMIT 1', [invoice]);
+  const rows = await query(
+    `SELECT *
+     FROM deposits
+     WHERE invoice = ?
+        OR premku_invoice = ?
+        OR JSON_UNQUOTE(JSON_EXTRACT(external_response, '$.invoice')) = ?
+        OR JSON_UNQUOTE(JSON_EXTRACT(external_response, '$.ref_id')) = ?
+        OR JSON_UNQUOTE(JSON_EXTRACT(external_response, '$.data.invoice')) = ?
+        OR JSON_UNQUOTE(JSON_EXTRACT(external_response, '$.data.ref_id')) = ?
+     LIMIT 1`,
+    [invoice, invoice, invoice, invoice, invoice, invoice],
+  );
   return rows[0] || null;
 }
 
 export async function createDeposit(payload) {
   await execute(
     `INSERT INTO deposits
-      (user_id, invoice, amount, total_bayar, status, qr_data, external_response)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      (user_id, invoice, premku_invoice, amount, total_bayar, status, qr_data, external_response)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       payload.user_id,
       payload.invoice,
+      payload.premku_invoice || null,
       Number(payload.amount || 0),
       Number(payload.total_bayar || payload.amount || 0),
       payload.status || 'pending',
@@ -64,16 +77,16 @@ export async function updateDeposit(invoice, payload) {
   await execute(
     `UPDATE deposits
      SET status = ?, qr_data = ?, external_response = ?, external_status_response = ?, processed_at = ?, updated_at = CURRENT_TIMESTAMP
-     WHERE invoice = ? AND processed_at IS NULL AND status <> 'success'`,
+     WHERE id = ? AND processed_at IS NULL AND status <> 'success'`,
     [
       payload.status || current.status,
       payload.qr_data !== undefined ? payload.qr_data : current.qr_data,
       JSON.stringify(payload.external_response ?? parseDbJson(current.external_response, null)),
       JSON.stringify(payload.external_status_response ?? parseDbJson(current.external_status_response, null)),
       payload.processed_at || current.processed_at || null,
-      invoice,
+      current.id,
     ],
   );
 
-  return findDepositByInvoice(invoice);
+  return findDepositByInvoice(current.invoice);
 }

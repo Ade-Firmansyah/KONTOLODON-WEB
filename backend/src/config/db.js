@@ -32,6 +32,34 @@ async function ensureDatabaseExists() {
   }
 }
 
+async function ensureColumn(connection, tableName, columnName, definition) {
+  const [rows] = await connection.query(
+    `SELECT COLUMN_NAME
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?
+     LIMIT 1`,
+    [env.DB_NAME, tableName, columnName],
+  );
+
+  if (!rows.length) {
+    await connection.query(`ALTER TABLE \`${tableName}\` ADD COLUMN \`${columnName}\` ${definition}`);
+  }
+}
+
+async function ensureIndex(connection, tableName, indexName, definition) {
+  const [rows] = await connection.query(
+    `SELECT INDEX_NAME
+     FROM INFORMATION_SCHEMA.STATISTICS
+     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND INDEX_NAME = ?
+     LIMIT 1`,
+    [env.DB_NAME, tableName, indexName],
+  );
+
+  if (!rows.length) {
+    await connection.query(`ALTER TABLE \`${tableName}\` ADD INDEX \`${indexName}\` ${definition}`);
+  }
+}
+
 function reviveJson(value, fallback = null) {
   if (value === null || value === undefined || value === '') return fallback;
   if (typeof value === 'object') return value;
@@ -162,6 +190,7 @@ function ensureTableStatements() {
       id INT AUTO_INCREMENT PRIMARY KEY,
       user_id INT NOT NULL,
       invoice VARCHAR(80) NOT NULL UNIQUE,
+      premku_invoice VARCHAR(80) NULL,
       amount BIGINT NOT NULL,
       total_bayar BIGINT NOT NULL,
       status ENUM('pending', 'success', 'failed', 'expired') NOT NULL DEFAULT 'pending',
@@ -173,6 +202,7 @@ function ensureTableStatements() {
       updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id),
       INDEX idx_deposits_user_id (user_id),
+      INDEX idx_deposits_premku_invoice (premku_invoice),
       INDEX idx_deposits_status (status)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
     `CREATE TABLE IF NOT EXISTS withdraws (
@@ -222,6 +252,23 @@ async function ensureSchema(connection) {
     await connection.query(statement);
   }
 
+  await ensureColumn(connection, 'deposits', 'premku_invoice', 'VARCHAR(80) NULL');
+  await ensureIndex(connection, 'deposits', 'idx_deposits_premku_invoice', '(premku_invoice)');
+  try {
+    await connection.query(
+      `UPDATE deposits
+       SET premku_invoice = NULLIF(COALESCE(
+         JSON_UNQUOTE(JSON_EXTRACT(external_response, '$.invoice')),
+         JSON_UNQUOTE(JSON_EXTRACT(external_response, '$.data.invoice')),
+         JSON_UNQUOTE(JSON_EXTRACT(external_response, '$.ref_id')),
+         JSON_UNQUOTE(JSON_EXTRACT(external_response, '$.data.ref_id'))
+       ), 'null')
+       WHERE premku_invoice IS NULL`,
+    );
+  } catch {
+    // Older rows can still be matched from external_response during status sync.
+  }
+
   const migrations = [
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS fullName VARCHAR(150) NOT NULL DEFAULT ''`,
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS orders INT NOT NULL DEFAULT 0`,
@@ -230,6 +277,7 @@ async function ensureSchema(connection) {
     `ALTER TABLE products ADD COLUMN IF NOT EXISTS note TEXT NULL`,
     `ALTER TABLE products ADD COLUMN IF NOT EXISTS tag VARCHAR(80) NULL`,
     `ALTER TABLE products ADD COLUMN IF NOT EXISTS image TEXT NULL`,
+    `ALTER TABLE deposits ADD COLUMN IF NOT EXISTS premku_invoice VARCHAR(80) NULL`,
     `ALTER TABLE transactions ADD COLUMN IF NOT EXISTS account_data JSON NULL`,
     `ALTER TABLE transactions ADD COLUMN IF NOT EXISTS external_order_response JSON NULL`,
     `ALTER TABLE transactions ADD COLUMN IF NOT EXISTS external_status_response JSON NULL`,
@@ -240,6 +288,7 @@ async function ensureSchema(connection) {
     `ALTER TABLE deposits ADD COLUMN IF NOT EXISTS external_response JSON NULL`,
     `ALTER TABLE deposits ADD COLUMN IF NOT EXISTS external_status_response JSON NULL`,
     `ALTER TABLE deposits ADD COLUMN IF NOT EXISTS processed_at DATETIME NULL`,
+    `ALTER TABLE deposits ADD INDEX idx_deposits_premku_invoice (premku_invoice)`,
     `ALTER TABLE notifications ADD COLUMN IF NOT EXISTS target_role ENUM('all', 'admin', 'reseller', 'member') NOT NULL DEFAULT 'all'`,
     `ALTER TABLE notifications ADD COLUMN IF NOT EXISTS created_by INT NULL`,
     `ALTER TABLE settings ADD COLUMN IF NOT EXISTS setting_key VARCHAR(80) NULL`,

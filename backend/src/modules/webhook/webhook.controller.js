@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import env from '../../config/env.js';
 import { execute } from '../../config/db.js';
 import { updateDepositStatus } from '../deposit/deposit.service.js';
+import { findDepositByInvoice } from '../../repositories/deposit.repo.js';
 import { updateTransactionStatus, findTransactionByInvoice, refundTransaction } from '../../repositories/transaction.repo.js';
 
 function normalizeStatus(payload) {
@@ -57,7 +58,8 @@ export async function premkuWebhook(req, res) {
   }
 
   try {
-    if (String(invoice).startsWith('DEP')) {
+    const existingDeposit = await findDepositByInvoice(invoice);
+    if (String(invoice).startsWith('DEP') || existingDeposit) {
       const deposit = await updateDepositStatus(invoice, status, req.body);
       await logWebhook(req.body, 'processed');
       return res.json({ status: true, data: deposit });
